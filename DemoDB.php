@@ -60,7 +60,30 @@ class DB {
             fseek($this->idx_fp, $pos, SEEK_SET);
             $block = fread($this->idx_fp, DB_INDEX_SIZE);
             $cpkey = substr($block, 4, DB_KEY_SIZE);
+
+            if (strncmp($key, $cpkey, strlen($key)) == 0) {
+                $dataoff = unpack('L', substr($block, DB_KEY_SIZE + 4, 4));
+                $dataoff = $dataoff[1];
+
+                $datalen = unpack('L', substr($block, DB_KEY_SIZE + 8, 4));
+                $datalen = $datalen[1];
+
+                $found = true;
+                break;
+            }
+
+            $pos = unpack('L', substr($block, 0, 4));
+            $pos = $pos[1];  //next linked list node
         }
+
+        if (!$found) {
+            return NULL;
+        }
+
+        fseek($this->dat_fp, $dataoff, SEEK_SET);
+        $data = fread($this->dat_fp, $datalen);
+
+        return $data;
     }
 
     public function insert($key, $data) {
