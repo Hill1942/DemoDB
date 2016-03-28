@@ -201,6 +201,14 @@ class DB {
         return DB_SUCCESS;
     }
 
+    public function close() {
+        if (!$this->closed) {
+            fclose($this->idx_fp);
+            fclose($this->dat_fp);
+            $this->closed = true;
+        }
+    }
+
     private function _hash($string) {
         $string = substr(md5($string), 0, 8);
         $hash = 0;
