@@ -159,6 +159,48 @@ class DB {
         return DB_SUCCESS;
     }
 
+    public function delete($key) {
+        $offset = ($this->_hash($key) % DB_BUCKET_SIZE) * 4;
+        fseek($this->idx_fp, $offset, SEEK_SET);
+        $head = unpack('L', fread($this->idx_fp, 4));
+        $head = $head[1];
+
+        $curr = $head;
+        $prev = 0;
+
+        $found = false;
+        while ($curr) {
+            fseek($this->idx_fp, $curr, SEEK_SET);
+            $block = fread($this->idx_fp, DB_INDEX_SIZE);
+
+            $next = unpack('L', substr($block, 0, 4));
+            $next = $next[1];
+
+            $cpkey = substr($block, 4, DB_KEY_SIZE);
+            if (strncmp($key, $cpkey, strlen($key)) == 0) {
+                $found = true;
+                break;
+            }
+
+            $prev = $curr;
+            $curr = $next;
+        }
+
+        if (!$found) {
+            return DB_FAILURE;
+        }
+
+        if ($prev == 0) {
+            fseek($this->idx_fp, $offset, SEEK_SET);
+            fwrite($this->idx_fp, pack('L', $next), 4);
+        } else {
+            fseek($this->idx_fp, $prev, SEEK_SET);
+            fwrite($this->idx_fp, pack('L', $next), 4);
+        }
+
+        return DB_SUCCESS;
+    }
+
     private function _hash($string) {
         $string = substr(md5($string), 0, 8);
         $hash = 0;
